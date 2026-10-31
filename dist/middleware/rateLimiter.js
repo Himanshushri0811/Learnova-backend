@@ -22,4 +22,5 @@ export const strictLimiter = rateLimit({
         message: 'Too many attempts. Please wait before trying again.',
     },
     skipSuccessfulRequests: false,
+    skip: (req) => req.method === 'OPTIONS',
 });
