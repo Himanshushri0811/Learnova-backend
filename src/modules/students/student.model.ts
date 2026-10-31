@@ -78,6 +78,13 @@ const StudentSchema = new Schema<IStudent>(
   },
   {
     timestamps: true,
+    toJSON: {
+      transform: (_doc, ret: Record<string, any>) => {
+        delete ret.passwordHash;
+        delete ret.__v;
+        return ret;
+      },
+    },
   },
 );
 

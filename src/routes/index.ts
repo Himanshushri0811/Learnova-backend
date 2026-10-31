@@ -7,17 +7,22 @@ import { BadRequestError } from '../utils/errors.js';
 import { authRouter } from '../modules/auth/auth.routes.js';
 import { attendanceRouter } from '../modules/attendance/attendance.routes.js';
 import { feesRouter } from '../modules/fees/fees.routes.js';
+import { isDatabaseConnected } from '../config/database.js';
 
 const router = Router();
 
 // Health check endpoint
 router.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'healthy',
+  const dbConnected = isDatabaseConnected();
+  const statusCode = dbConnected ? 200 : 503;
+
+  res.status(statusCode).json({
+    status: dbConnected ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
     service: 'Learnova API',
     version: '0.1.0',
     environment: ENV.NODE_ENV,
+    database: dbConnected ? 'connected' : 'disconnected',
   });
 });
 
@@ -59,4 +64,3 @@ if (ENV.NODE_ENV !== 'production') {
 }
 
 export const apiRouter = router;
-

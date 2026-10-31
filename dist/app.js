@@ -5,14 +5,30 @@ import { ENV } from './config/env.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import { apiRouter } from './routes/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { NotFoundError } from './utils/errors.js';
+import { ForbiddenError, NotFoundError } from './utils/errors.js';
 export const createApp = () => {
     const app = express();
+    // Trust proxy for rate limiting behind Render / Cloud reverse proxies
+    app.set('trust proxy', 1);
     // Security Headers via Helmet
     app.use(helmet());
-    // Restricted CORS configuration
+    // CORS configuration supporting single origin or comma-separated list
+    const allowedOrigins = [
+        ...ENV.CORS_ORIGIN.split(',').map((origin) => origin.trim().replace(/\/$/, '')),
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ].filter(Boolean);
     app.use(cors({
-        origin: [ENV.CORS_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+        origin: (origin, callback) => {
+            // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+            if (!origin)
+                return callback(null, true);
+            const normalized = origin.replace(/\/$/, '');
+            if (allowedOrigins.includes(normalized)) {
+                return callback(null, true);
+            }
+            return callback(new ForbiddenError(`Origin '${origin}' not allowed by CORS policy`));
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],

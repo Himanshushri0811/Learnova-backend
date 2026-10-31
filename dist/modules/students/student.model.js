@@ -27,7 +27,19 @@ const StudentSchema = new Schema({
         trim: true,
         lowercase: true,
     },
-    // Soft-delete / archival pattern for academic history preservation
+    username: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        unique: true,
+        sparse: true,
+        minlength: [4, 'Username must be at least 4 characters'],
+        maxlength: [30, 'Username cannot exceed 30 characters'],
+    },
+    passwordHash: {
+        type: String,
+        select: false,
+    },
     isArchived: {
         type: Boolean,
         default: false,
@@ -44,7 +56,13 @@ const StudentSchema = new Schema({
     },
 }, {
     timestamps: true,
+    toJSON: {
+        transform: (_doc, ret) => {
+            delete ret.passwordHash;
+            delete ret.__v;
+            return ret;
+        },
+    },
 });
-// Compound index for active student searches by grade
 StudentSchema.index({ isArchived: 1, gradeLevel: 1 });
 export const StudentModel = mongoose.model('Student', StudentSchema);
