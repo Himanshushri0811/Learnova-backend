@@ -1,20 +1,99 @@
+import dns from 'node:dns';
 import mongoose from 'mongoose';
 import { ENV } from './env.js';
 
-export const connectDatabase = async (): Promise<boolean> => {
+// Resolve DNS SRV records reliably (especially on Windows where c-ares defaults to 127.0.0.1)
+const configureDns = (): void => {
   try {
-    mongoose.set('strictQuery', true);
-    await mongoose.connect(ENV.MONGODB_URI);
-    console.log(`[Database] MongoDB connected successfully to ${ENV.MONGODB_URI}`);
-    return true;
-  } catch (error) {
-    console.warn(`[Database] MongoDB connection warning: ${(error as Error).message}`);
-    if (ENV.NODE_ENV === 'production') {
-      console.error('[Database] MongoDB connection failure in production. Exiting.');
-      process.exit(1);
+    const servers = dns.getServers();
+    const hasLoopbackOnly =
+      !servers.length || servers.every((s) => s.startsWith('127.') || s === '::1');
+
+    if (hasLoopbackOnly || process.env.DNS_SERVERS) {
+      const customServers = process.env.DNS_SERVERS
+        ? process.env.DNS_SERVERS.split(',').map((s) => s.trim())
+        : ['8.8.8.8', '1.1.1.1', '8.8.4.4'];
+      dns.setServers(customServers);
     }
-    console.warn('[Database] Continuing in development mode with simulated/degraded database.');
-    return false;
+  } catch (err) {
+    console.warn('[Database] Custom DNS resolver initialization notice:', (err as Error).message);
   }
 };
 
+const getSanitizedHost = (uri: string): string => {
+  try {
+    const match = uri.match(/@([^/?#]+)/);
+    if (match) return match[1];
+    return 'cluster-configured';
+  } catch {
+    return 'cluster-configured';
+  }
+};
+
+export const connectDatabase = async (): Promise<boolean> => {
+  configureDns();
+
+  mongoose.set('strictQuery', true);
+
+  // Setup connection event listeners once
+  if (mongoose.connection.listenerCount('error') === 0) {
+    mongoose.connection.on('error', (err) => {
+      console.error('[Database] MongoDB connection error:', err.message);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.warn('[Database] MongoDB disconnected.');
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('[Database] MongoDB reconnected.');
+    });
+  }
+
+  const connectOptions: mongoose.ConnectOptions = {
+    serverSelectionTimeoutMS: 5000,
+  };
+
+  try {
+    await mongoose.connect(ENV.MONGODB_URI, connectOptions);
+    console.log(`[Database] MongoDB connected successfully to ${getSanitizedHost(ENV.MONGODB_URI)}`);
+    return true;
+  } catch (error) {
+    const msg = (error as Error).message;
+    console.error(`[Database] MongoDB connection attempt failed: ${msg}`);
+
+    // If querySrv ECONNREFUSED or DNS lookup failed, retry once with public DNS fallback
+    if (msg.includes('querySrv') || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND')) {
+      try {
+        console.warn('[Database] Retrying with public DNS fallback (8.8.8.8, 1.1.1.1)...');
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+        await mongoose.connect(ENV.MONGODB_URI, connectOptions);
+        console.log(`[Database] MongoDB connected successfully via fallback DNS to ${getSanitizedHost(ENV.MONGODB_URI)}`);
+        return true;
+      } catch (retryErr) {
+        console.error(`[Database] MongoDB fallback retry failed: ${(retryErr as Error).message}`);
+      }
+    }
+
+    // Fail fast with clear actionable diagnostics
+    throw new Error(
+      `[Database] Unable to connect to MongoDB Atlas cluster.\n` +
+      `Root cause: ${msg}\n` +
+      `Checklist:\n` +
+      `1. MongoDB Atlas Network Access: Whitelist current IP address or allow 0.0.0.0/0 (for cloud hosting like Render).\n` +
+      `2. Database User: Ensure database user credentials in MONGODB_URI are valid and have readWrite access on the target database.\n` +
+      `3. Cluster Hostname: Ensure Atlas cluster hostname is active and resolves via SRV record.`
+    );
+  }
+};
+
+export const disconnectDatabase = async (): Promise<void> => {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close(false);
+    console.log('[Database] MongoDB connection closed.');
+  }
+};
+
+export const isDatabaseConnected = (): boolean => {
+  return mongoose.connection.readyState === 1;
+};
