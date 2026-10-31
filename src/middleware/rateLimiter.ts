@@ -1,4 +1,3 @@
-
 import rateLimit from 'express-rate-limit';
 
 // General API requests: 300 requests per 15 minutes per IP
@@ -25,4 +24,5 @@ export const strictLimiter = rateLimit({
     message: 'Too many attempts. Please wait before trying again.',
   },
   skipSuccessfulRequests: false,
+  skip: (req) => req.method === 'OPTIONS',
 });

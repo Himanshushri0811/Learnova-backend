@@ -19,7 +19,7 @@ const envSchema = z.object({
   PORT: z.string().default('5000').transform((val) => parseInt(val, 10)),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   API_PREFIX: z.string().default('/api/v1'),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  CORS_ORIGIN: z.string().default('https://learnova-edai.netlify.app,http://localhost:5173'),
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/learnova'),
   JWT_SECRET: z.string().min(32),
   ADMIN_EMAIL: z.string().email(),

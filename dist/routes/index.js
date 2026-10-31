@@ -8,6 +8,11 @@ import { authRouter } from '../modules/auth/auth.routes.js';
 import { attendanceRouter } from '../modules/attendance/attendance.routes.js';
 import { feesRouter } from '../modules/fees/fees.routes.js';
 import { isDatabaseConnected } from '../config/database.js';
+import { createRequire } from 'module';
+
+var require = createRequire(import.meta.url);
+var module = { exports: {} };
+
 const router = Router();
 // Health check endpoint
 router.get('/health', (_req, res) => {
