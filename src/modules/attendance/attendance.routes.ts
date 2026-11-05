@@ -9,7 +9,17 @@ import {
 
 const router = Router();
 
-router.use(authenticate, requireRole(['admin']));
+router.use(authenticate);
+
+// Authenticated student access to own attendance records
+router.get(
+    '/my-attendance',
+    requireRole(['student']),
+    AttendanceController.getMyAttendance
+);
+
+// Admin-only attendance management
+router.use(requireRole(['admin']));
 
 router.get('/', validate(getAttendanceSchema), AttendanceController.getByDate);
 

@@ -5,6 +5,8 @@ import { authenticate, requireRole, requireStudentAccess } from '../../middlewar
 import {
   createStudentSchema,
   updateStudentSchema,
+  updateOwnStudentProfileSchema,
+  changeOwnStudentPasswordSchema,
   getStudentsQuerySchema,
   studentIdParamSchema,
 } from './student.schema.js';
@@ -28,6 +30,27 @@ router.post(
   requireRole(['admin']),
   validate(createStudentSchema),
   StudentController.create
+);
+
+// Get authenticated student's own profile (Student role only)
+router.get(
+  '/me',
+  requireRole(['student']),
+  StudentController.getMe
+);
+
+router.patch(
+  '/me',
+  requireRole(['student']),
+  validate(updateOwnStudentProfileSchema),
+  StudentController.updateMe
+);
+
+router.post(
+  '/me/password',
+  requireRole(['student']),
+  validate(changeOwnStudentPasswordSchema),
+  StudentController.changeMyPassword
 );
 
 // Get single student record (Admin, Student itself, or linked Guardian)
@@ -63,4 +86,3 @@ router.post(
 );
 
 export const studentRouter = router;
-

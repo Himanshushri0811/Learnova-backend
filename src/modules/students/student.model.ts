@@ -3,10 +3,14 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IStudent extends Document {
   name: string;
-  gradeLevel: string;
-  guardianName: string;
-  guardianPhone: string;
+  gradeLevel?: string;
+  guardianName?: string;
+  guardianPhone?: string;
   guardianEmail?: string;
+  fatherName?: string;
+  motherName?: string;
+  address?: string;
+  profilePhoto?: string;
 
   // Student login credentials
   username?: string;
@@ -30,23 +34,39 @@ const StudentSchema = new Schema<IStudent>(
     },
     gradeLevel: {
       type: String,
-      required: [true, 'Grade level is required'],
       trim: true,
     },
     guardianName: {
       type: String,
-      required: [true, 'Guardian name is required'],
       trim: true,
     },
     guardianPhone: {
       type: String,
-      required: [true, 'Guardian phone is required'],
       trim: true,
     },
     guardianEmail: {
       type: String,
       trim: true,
       lowercase: true,
+    },
+    fatherName: {
+      type: String,
+      trim: true,
+      maxlength: [100, "Father's name cannot exceed 100 characters"],
+    },
+    motherName: {
+      type: String,
+      trim: true,
+      maxlength: [100, "Mother's name cannot exceed 100 characters"],
+    },
+    address: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Address cannot exceed 500 characters'],
+    },
+    profilePhoto: {
+      type: String,
+      maxlength: [350000, 'Profile photo is too large'],
     },
     username: {
       type: String,

@@ -9,10 +9,15 @@ import { validate } from '../../middleware/validate.js';
 import { StudentModel } from '../students/student.model.js';
 
 const loginSchema = z.object({
-  body: z.object({
-    email: z.string().min(1, 'Email or username is required').trim(),
-    password: z.string().min(1, 'Password is required'),
-  }),
+  body: z
+    .object({
+      email: z.string().trim().optional(),
+      username: z.string().trim().optional(),
+      password: z.string().min(1, 'Password is required'),
+    })
+    .refine((data) => Boolean((data.email && data.email.length > 0) || (data.username && data.username.length > 0)), {
+      message: 'Email or username is required',
+    }),
 });
 
 const router = Router();
@@ -22,7 +27,8 @@ router.post(
   strictLimiter,
   validate(loginSchema),
   async (req: Request, res: Response): Promise<void> => {
-    const identifier = req.body.email.trim().toLowerCase();
+    const rawIdentifier = (req.body.username || req.body.email || '').trim();
+    const identifier = rawIdentifier.toLowerCase();
     const password = req.body.password;
 
     // 1. Check Administrator credentials
@@ -54,9 +60,13 @@ router.post(
       return;
     }
 
-    // 2. Check Student credentials (by username or guardian email)
+    // Prefer the submitted identifier field so a guardian email matching another
+    // student's username cannot authenticate the wrong account.
+    const studentLookup = req.body.username
+      ? { username: identifier }
+      : { guardianEmail: identifier };
     const student = await StudentModel.findOne({
-      $or: [{ username: identifier }, { guardianEmail: identifier }],
+      ...studentLookup,
       isArchived: false,
     }).select('+passwordHash');
 
@@ -67,6 +77,8 @@ router.post(
           id: student._id.toString(),
           email: student.guardianEmail || `${student.username || 'student'}@learnova.local`,
           name: student.name,
+          username: student.username,
+          gradeLevel: student.gradeLevel,
           role: 'student' as const,
         };
 
@@ -86,7 +98,7 @@ router.post(
     // Generic invalid credential failure
     res.status(401).json({
       status: 'fail',
-      message: 'Invalid email or password',
+      message: 'Invalid username/email or password',
     });
   }
 );

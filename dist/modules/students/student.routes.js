@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { StudentController } from './student.controller.js';
 import { validate } from '../../middleware/validate.js';
 import { authenticate, requireRole, requireStudentAccess } from '../../middleware/auth.js';
-import { createStudentSchema, updateStudentSchema, getStudentsQuerySchema, studentIdParamSchema, } from './student.schema.js';
+import { createStudentSchema, updateStudentSchema, updateOwnStudentProfileSchema, changeOwnStudentPasswordSchema, getStudentsQuerySchema, studentIdParamSchema, } from './student.schema.js';
 const router = Router();
 // In foundation phase, all student routes require valid authentication
 router.use(authenticate);
@@ -10,6 +10,10 @@ router.use(authenticate);
 router.get('/', requireRole(['admin']), validate(getStudentsQuerySchema), StudentController.list);
 // Create student record (Admin only)
 router.post('/', requireRole(['admin']), validate(createStudentSchema), StudentController.create);
+// Get authenticated student's own profile (Student role only)
+router.get('/me', requireRole(['student']), StudentController.getMe);
+router.patch('/me', requireRole(['student']), validate(updateOwnStudentProfileSchema), StudentController.updateMe);
+router.post('/me/password', requireRole(['student']), validate(changeOwnStudentPasswordSchema), StudentController.changeMyPassword);
 // Get single student record (Admin, Student itself, or linked Guardian)
 router.get('/:id', validate(studentIdParamSchema), requireStudentAccess, StudentController.getById);
 // Update student record (Admin only)

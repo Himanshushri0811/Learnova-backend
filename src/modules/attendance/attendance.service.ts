@@ -76,4 +76,33 @@ export class AttendanceService {
 
         return this.getByDate(date);
     }
+
+    static async getAttendanceForStudent(studentId: string) {
+        if (!mongoose.isValidObjectId(studentId)) {
+            throw new BadRequestError('Invalid student ID');
+        }
+
+        const records = await AttendanceModel.find({
+            studentId: new mongoose.Types.ObjectId(studentId),
+        })
+            .sort({ date: -1 })
+            .lean();
+
+        const total = records.length;
+        const present = records.filter((r) => r.status === 'present').length;
+        const absent = records.filter((r) => r.status === 'absent').length;
+        const leave = records.filter((r) => r.status === 'leave').length;
+        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+        return {
+            summary: {
+                total,
+                present,
+                absent,
+                leave,
+                percentage,
+            },
+            records,
+        };
+    }
 }

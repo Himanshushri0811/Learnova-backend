@@ -53,4 +53,28 @@ export class AttendanceController {
             next(error);
         }
     }
+
+    static async getMyAttendance(
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> {
+        try {
+            if (!req.user || req.user.role !== 'student') {
+                res.status(403).json({
+                    status: 'fail',
+                    message: 'Only authenticated students can view attendance via this endpoint',
+                });
+                return;
+            }
+
+            const data = await AttendanceService.getAttendanceForStudent(req.user.id);
+            res.status(200).json({
+                status: 'success',
+                data,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 }

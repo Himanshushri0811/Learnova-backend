@@ -19,6 +19,7 @@ export const createApp = (): express.Application => {
   // CORS configuration supporting single origin or comma-separated list
   const allowedOrigins = [
     ...ENV.CORS_ORIGIN.split(',').map((origin) => origin.trim().replace(/\/$/, '')),
+    'https://learnova-edai.netlify.app',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
   ].filter(Boolean);
