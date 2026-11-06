@@ -1,9 +1,8 @@
 # Environment secrets
-.env
-.env.*
 !.env.example
 
 # Dependencies and generated files
 node_modules/
 dist/
 coverage/
+config.bat
