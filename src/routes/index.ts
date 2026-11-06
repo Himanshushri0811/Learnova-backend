@@ -7,6 +7,8 @@ import { BadRequestError } from '../utils/errors.js';
 import { authRouter } from '../modules/auth/auth.routes.js';
 import { attendanceRouter } from '../modules/attendance/attendance.routes.js';
 import { feesRouter } from '../modules/fees/fees.routes.js';
+import { classSubjectsRouter } from '../modules/classSubjects/classSubjects.routes.js';
+import { homeworkRouter } from '../modules/homework/homework.routes.js';
 import { isDatabaseConnected } from '../config/database.js';
 
 const router = Router();
@@ -29,9 +31,12 @@ router.get('/health', (_req: Request, res: Response) => {
 router.use('/auth', authRouter);
 router.use('/attendance', attendanceRouter);
 router.use('/fees', feesRouter);
+router.use('/class-subjects', classSubjectsRouter);
+router.use('/homework', homeworkRouter);
 
 // Admissions Enquiry (Public)
 router.use('/enquiry', enquiryRouter);
+router.use('/enquiries', enquiryRouter);
 
 // Students Module (Protected CRUD Foundation)
 router.use('/students', studentRouter);

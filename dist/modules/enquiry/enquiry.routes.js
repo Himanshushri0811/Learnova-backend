@@ -1,30 +1,16 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { validate } from '../../middleware/validate.js';
 import { strictLimiter } from '../../middleware/rateLimiter.js';
-const enquirySchema = z.object({
-    body: z.object({
-        studentName: z.string().min(2, 'Student name must have at least 2 characters').max(100),
-        gradeLevel: z.string().min(1, 'Grade level is required'),
-        guardianName: z.string().min(2, 'Guardian name must have at least 2 characters').max(100),
-        phone: z.string().min(7, 'Phone number must have at least 7 characters').max(20),
-        message: z.string().max(1000).optional(),
-    }),
-});
+import { authenticate, requireRole } from '../../middleware/auth.js';
+import { EnquiryController } from './enquiry.controller.js';
+import { bulkMarkReadSchema, enquiryIdSchema, listEnquiriesSchema, publicEnquirySchema, updateEnquirySchema, } from './enquiry.schema.js';
 const router = Router();
-router.post('/', strictLimiter, validate(enquirySchema), async (req, res) => {
-    // In foundation phase, log enquiry safely without storing plaintext sensitive secrets
-    const { studentName, gradeLevel, guardianName, phone, message } = req.body;
-    console.log(`[Tuition Enquiry Received] Student: ${studentName} (${gradeLevel}), Guardian: ${guardianName}`);
-    res.status(201).json({
-        status: 'success',
-        message: 'Admission enquiry received successfully. Our tutor will contact you shortly.',
-        data: {
-            enquiryId: `enq_${Date.now()}`,
-            studentName,
-            gradeLevel,
-            createdAt: new Date().toISOString(),
-        },
-    });
-});
+router.post('/', strictLimiter, validate(publicEnquirySchema), EnquiryController.create);
+router.use(authenticate, requireRole(['admin']));
+router.get('/stats', EnquiryController.stats);
+router.post('/mark-read', validate(bulkMarkReadSchema), EnquiryController.markRead);
+router.get('/', validate(listEnquiriesSchema), EnquiryController.list);
+router.get('/:id', validate(enquiryIdSchema), EnquiryController.getById);
+router.patch('/:id', validate(updateEnquirySchema), EnquiryController.update);
+router.delete('/:id', validate(enquiryIdSchema), EnquiryController.delete);
 export const enquiryRouter = router;
